@@ -30,12 +30,12 @@ _hdbscan_tree = Extension('hdbscan._hdbscan_tree',
                           sources=['hdbscan/_hdbscan_tree.pyx'])
 _hdbscan_linkage = Extension('hdbscan._hdbscan_linkage',
                              sources=['hdbscan/_hdbscan_linkage.pyx'])
-_hdbscan_boruvka = Extension('hdbscan._hdbscan_boruvka',
-                             sources=['hdbscan/_hdbscan_boruvka.pyx'])
+# _hdbscan_boruvka = Extension('hdbscan._hdbscan_boruvka',
+#                              sources=['hdbscan/_hdbscan_boruvka.pyx'])
 _hdbscan_reachability = Extension('hdbscan._hdbscan_reachability',
                                   sources=['hdbscan/_hdbscan_reachability.pyx'])
-_prediction_utils = Extension('hdbscan._prediction_utils',
-                              sources=['hdbscan/_prediction_utils.pyx'])
+# _prediction_utils = Extension('hdbscan._prediction_utils',
+#                               sources=['hdbscan/_prediction_utils.pyx'])
 dist_metrics = Extension('hdbscan.dist_metrics',
                          sources=['hdbscan/dist_metrics.pyx'])
 
@@ -78,9 +78,9 @@ configuration = {
     'install_requires': requirements(),
     'ext_modules': [_hdbscan_tree,
                     _hdbscan_linkage,
-                    _hdbscan_boruvka,
+                    # _hdbscan_boruvka,
                     _hdbscan_reachability,
-                    _prediction_utils,
+                    # _prediction_utils,
                     dist_metrics],
     'cmdclass': {'build_ext': CustomBuildExtCommand},
     'test_suite': 'nose.collector',
