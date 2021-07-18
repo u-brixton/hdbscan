@@ -5,21 +5,14 @@ HDBSCAN: Hierarchical Density-Based Spatial Clustering
 """
 
 import numpy as np
-
-from sklearn.base import BaseEstimator, ClusterMixin
+from sklearn.metrics import pairwise_distances
 from sklearn.neighbors import KDTree
 from warnings import warn
 
-from ._hdbscan_linkage import (mst_linkage_core,
-                               mst_linkage_core_vector,
-                               label)
 from ._hdbscan_tree import (condense_tree,
                             compute_stability,
-                            get_clusters,
-                            outlier_scores)
-
-from ._hdbscan_reachability import (mutual_reachability)
-from .dist_metrics import DistanceMetric
+                            get_clusters)
+from ._hdbscan_linkage import label
 
 # Author: Leland McInnes <leland.mcinnes@gmail.com>
 #         Steve Astels <sastels@gmail.com>
@@ -51,6 +44,29 @@ def _tree_to_labels(X, single_linkage_tree, min_cluster_size=10,
     return (labels, probabilities, stabilities, condensed_tree,
             single_linkage_tree)
 
+def mst_linkage_core_py(distance_matrix):
+    result = np.zeros((distance_matrix.shape[0] - 1, 3))
+    node_labels = np.arange(distance_matrix.shape[0], dtype=np.intp)
+    current_node = 0
+    current_distances = np.infty * np.ones(distance_matrix.shape[0])
+    current_labels = node_labels
+    
+    for i in range(1, node_labels.shape[0]):
+        label_filter = current_labels != current_node
+        current_labels = current_labels[label_filter]
+        left = current_distances[label_filter]
+        right = distance_matrix[current_node][current_labels]
+        current_distances = np.where(left < right, left, right)
+
+        new_node_index = np.argmin(current_distances)
+        new_node = current_labels[new_node_index]
+        result[i - 1, 0] = current_node
+        result[i - 1, 1] = new_node
+        result[i - 1, 2] = current_distances[new_node_index]
+        current_node = new_node
+    
+    return result
+
 
 def _hdbscan_prims_kdtree(X, min_samples=5, alpha=1.0,
                           metric='minkowski', p=2, leaf_size=40,
@@ -64,24 +80,24 @@ def _hdbscan_prims_kdtree(X, min_samples=5, alpha=1.0,
 
     tree = KDTree(X, metric=metric, leaf_size=leaf_size, **kwargs)
 
-    # TO DO: Deal with p for minkowski appropriately
-    dist_metric = DistanceMetric.get_metric(metric, **kwargs)
-
     # Get distance to kth nearest neighbour
     core_distances = tree.query(X, k=min_samples,
                                 dualtree=True,
                                 breadth_first=True)[0][:, -1].copy(order='C')
-    # Mutual reachability distance is implicit in mst_linkage_core_vector
-    min_spanning_tree = mst_linkage_core_vector(X, core_distances, dist_metric,
-                                                alpha)
+    
+    distance_matrix = pairwise_distances(X, metric=metric, **kwargs)
+    mutual_reachability_ = kdtree_mutual_reachability(X, distance_matrix, metric,
+                                                        p, min_points=min_samples, 
+                                                        alpha=alpha)
 
+    min_spanning_tree = mst_linkage_core_py(mutual_reachability_)
     # Sort edges of the min_spanning_tree by weight
     min_spanning_tree = min_spanning_tree[np.argsort(min_spanning_tree.T[2]),
                         :]
 
     # Convert edge list into standard hierarchical clustering format
     single_linkage_tree = label(min_spanning_tree)
-
+    
     if gen_min_span_tree:
         warn('Cannot generate Minimum Spanning Tree; '
              'the implemented Prim\'s does not produce '
@@ -89,6 +105,74 @@ def _hdbscan_prims_kdtree(X, min_samples=5, alpha=1.0,
 
     return single_linkage_tree, None
 
+def kdtree_mutual_reachability(X, distance_matrix, metric, p=2, min_points=5,
+                               alpha=1.0, **kwargs):
+    dim = distance_matrix.shape[0]
+    min_points = min(dim - 1, min_points)
+
+    tree = KDTree(X, metric=metric, **kwargs)
+
+    core_distances = tree.query(X, k=min_points)[0][:, -1]
+
+    if alpha != 1.0:
+        distance_matrix = distance_matrix / alpha
+
+    stage1 = np.where(core_distances > distance_matrix,
+                      core_distances, distance_matrix)
+    result = np.where(core_distances > stage1.T,
+                      core_distances.T, stage1.T).T
+    return result
+
+class UnionFindPy (object):
+
+    def __init__(self, N):
+        self.parent_arr = -1 * np.ones(2 * N - 1, dtype=np.intp, order='C')
+        self.next_label = N
+        self.size_arr = np.hstack((np.ones(N, dtype=np.intp),
+                                   np.zeros(N-1, dtype=np.intp)))
+        self.parent = self.parent_arr.data
+        self.size = self.size_arr.data
+
+    def union(self, m, n):
+        self.size[self.next_label] = self.size[m] + self.size[n]
+        self.parent[m] = self.next_label
+        self.parent[n] = self.next_label
+        self.size[self.next_label] = self.size[m] + self.size[n]
+        self.next_label += 1
+
+        return
+
+    def fast_find(self, n):
+        p = n
+        while self.parent_arr[n] != -1:
+            n = self.parent_arr[n]
+        # label up to the root
+        while self.parent_arr[p] != n:
+            p, self.parent_arr[p] = self.parent_arr[p], n
+        return n
+
+def label_py(L):
+    result_arr = np.zeros((L.shape[0], L.shape[1] + 1))
+    result = np.zeros((L.shape[0], 4))
+    N = L.shape[0] + 1
+    U = UnionFindPy(N)
+
+    for index in range(L.shape[0]):
+
+        a = L[index, 0]
+        b = L[index, 1]
+        delta = L[index, 2]
+
+        aa, bb = U.fast_find(int(a)), U.fast_find(int(b))
+
+        result[index][0] = aa
+        result[index][1] = bb
+        result[index][2] = delta
+        result[index][3] = U.size[aa] + U.size[bb]
+
+        U.union(aa, bb)
+
+    return result_arr
 
 def hdbscan_mini(X, min_cluster_size=5, min_samples=None, alpha=1.0, cluster_selection_epsilon=0.0,
             metric='euclidean',
