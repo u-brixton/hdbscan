@@ -11,7 +11,6 @@ from libc.float cimport DBL_MAX
 
 from dist_metrics cimport DistanceMetric
 
-
 cpdef np.ndarray[np.double_t, ndim=2] mst_linkage_core(
                                np.ndarray[np.double_t,
                                           ndim=2] distance_matrix):
@@ -50,112 +49,6 @@ cpdef np.ndarray[np.double_t, ndim=2] mst_linkage_core(
         current_node = new_node
 
     return result
-
-
-cpdef np.ndarray[np.double_t, ndim=2] mst_linkage_core_vector(
-        np.ndarray[np.double_t, ndim=2, mode='c'] raw_data,
-        np.ndarray[np.double_t, ndim=1, mode='c'] core_distances,
-        DistanceMetric dist_metric,
-        np.double_t alpha=1.0):
-
-    # Add a comment
-    cdef np.ndarray[np.double_t, ndim=1] current_distances_arr
-    cdef np.ndarray[np.int8_t, ndim=1] in_tree_arr
-    cdef np.ndarray[np.double_t, ndim=2] result_arr
-
-    cdef np.double_t * current_distances
-    cdef np.double_t * current_core_distances
-    cdef np.double_t * raw_data_ptr
-    cdef np.int8_t * in_tree
-    cdef np.double_t[:, ::1] raw_data_view
-    cdef np.double_t[:, ::1] result
-
-    cdef np.ndarray label_filter
-
-    cdef np.intp_t current_node
-    cdef np.intp_t new_node
-    cdef np.intp_t i
-    cdef np.intp_t j
-    cdef np.intp_t dim
-    cdef np.intp_t num_features
-
-    cdef double current_node_core_distance
-    cdef double right_value
-    cdef double left_value
-    cdef double core_value
-    cdef double new_distance
-
-    dim = raw_data.shape[0]
-    num_features = raw_data.shape[1]
-
-    raw_data_view = (<np.double_t[:raw_data.shape[0], :raw_data.shape[1]:1]> (
-        <np.double_t *> raw_data.data))
-    raw_data_ptr = (<np.double_t *> &raw_data_view[0, 0])
-
-    result_arr = np.zeros((dim - 1, 3))
-    in_tree_arr = np.zeros(dim, dtype=np.int8)
-    current_node = 0
-    current_distances_arr = np.infty * np.ones(dim)
-
-    result = (<np.double_t[:dim - 1, :3:1]> (<np.double_t *> result_arr.data))
-    in_tree = (<np.int8_t *> in_tree_arr.data)
-    current_distances = (<np.double_t *> current_distances_arr.data)
-    current_core_distances = (<np.double_t *> core_distances.data)
-
-    for i in range(1, dim):
-
-        in_tree[current_node] = 1
-
-        current_node_core_distance = current_core_distances[current_node]
-
-        new_distance = DBL_MAX
-        new_node = 0
-
-        for j in range(dim):
-            if in_tree[j]:
-                continue
-
-            right_value = current_distances[j]
-            left_value = dist_metric.dist(&raw_data_ptr[num_features *
-                                                        current_node],
-                                          &raw_data_ptr[num_features * j],
-                                          num_features)
-
-            if alpha != 1.0:
-                left_value /= alpha
-
-            core_value = core_distances[j]
-            if (current_node_core_distance > right_value or
-                    core_value > right_value or
-                    left_value > right_value):
-                if right_value < new_distance:
-                    new_distance = right_value
-                    new_node = j
-                continue
-
-            if core_value > current_node_core_distance:
-                if core_value > left_value:
-                    left_value = core_value
-            else:
-                if current_node_core_distance > left_value:
-                    left_value = current_node_core_distance
-
-            if left_value < right_value:
-                current_distances[j] = left_value
-                if left_value < new_distance:
-                    new_distance = left_value
-                    new_node = j
-            else:
-                if right_value < new_distance:
-                    new_distance = right_value
-                    new_node = j
-
-        result[i - 1, 0] = <double> current_node
-        result[i - 1, 1] = <double> new_node
-        result[i - 1, 2] = new_distance
-        current_node = new_node
-
-    return result_arr
 
 
 cdef class UnionFind (object):

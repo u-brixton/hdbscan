@@ -32,12 +32,12 @@ _hdbscan_linkage = Extension('hdbscan._hdbscan_linkage',
                              sources=['hdbscan/_hdbscan_linkage.pyx'])
 # _hdbscan_boruvka = Extension('hdbscan._hdbscan_boruvka',
 #                              sources=['hdbscan/_hdbscan_boruvka.pyx'])
-_hdbscan_reachability = Extension('hdbscan._hdbscan_reachability',
-                                  sources=['hdbscan/_hdbscan_reachability.pyx'])
+# _hdbscan_reachability = Extension('hdbscan._hdbscan_reachability',
+#                                   sources=['hdbscan/_hdbscan_reachability.pyx'])
 # _prediction_utils = Extension('hdbscan._prediction_utils',
 #                               sources=['hdbscan/_prediction_utils.pyx'])
-dist_metrics = Extension('hdbscan.dist_metrics',
-                         sources=['hdbscan/dist_metrics.pyx'])
+# dist_metrics = Extension('hdbscan.dist_metrics',
+#                          sources=['hdbscan/dist_metrics.pyx'])
 
 
 def readme():
