@@ -1,2 +1,2 @@
-from .hdbscan_ import HDBSCAN, hdbscan_mini
+from .hdbscan_ import hdbscan_mini
 
