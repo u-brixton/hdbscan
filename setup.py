@@ -68,7 +68,7 @@ configuration = {
     'maintainer': 'Leland McInnes',
     'maintainer_email': 'leland.mcinnes@gmail.com',
     'license': 'BSD',
-    'packages': ['hdbscan', 'hdbscan.tests'],
+    'packages': ['hdbscan'],
     'install_requires': requirements(),
     'ext_modules': [_hdbscan_tree,
                     _hdbscan_linkage,

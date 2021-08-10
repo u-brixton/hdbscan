@@ -123,57 +123,6 @@ def kdtree_mutual_reachability(X, distance_matrix, metric, p=2, min_points=5,
                       core_distances.T, stage1.T).T
     return result
 
-class UnionFindPy (object):
-
-    def __init__(self, N):
-        self.parent_arr = -1 * np.ones(2 * N - 1, dtype=np.intp, order='C')
-        self.next_label = N
-        self.size_arr = np.hstack((np.ones(N, dtype=np.intp),
-                                   np.zeros(N-1, dtype=np.intp)))
-        self.parent = self.parent_arr.data
-        self.size = self.size_arr.data
-
-    def union(self, m, n):
-        self.size[self.next_label] = self.size[m] + self.size[n]
-        self.parent[m] = self.next_label
-        self.parent[n] = self.next_label
-        self.size[self.next_label] = self.size[m] + self.size[n]
-        self.next_label += 1
-
-        return
-
-    def fast_find(self, n):
-        p = n
-        while self.parent_arr[n] != -1:
-            n = self.parent_arr[n]
-        # label up to the root
-        while self.parent_arr[p] != n:
-            p, self.parent_arr[p] = self.parent_arr[p], n
-        return n
-
-def label_py(L):
-    result_arr = np.zeros((L.shape[0], L.shape[1] + 1))
-    result = np.zeros((L.shape[0], 4))
-    N = L.shape[0] + 1
-    U = UnionFindPy(N)
-
-    for index in range(L.shape[0]):
-
-        a = L[index, 0]
-        b = L[index, 1]
-        delta = L[index, 2]
-
-        aa, bb = U.fast_find(int(a)), U.fast_find(int(b))
-
-        result[index][0] = aa
-        result[index][1] = bb
-        result[index][2] = delta
-        result[index][3] = U.size[aa] + U.size[bb]
-
-        U.union(aa, bb)
-
-    return result_arr
-
 def hdbscan_mini(X, min_cluster_size=5, min_samples=None, alpha=1.0, cluster_selection_epsilon=0.0,
             metric='euclidean',
             match_reference_implementation=False,
